@@ -213,6 +213,74 @@ register_curses_constants(lua_State *L)
 	CF(41); CF(42); CF(43); CF(44); CF(45); CF(46); CF(47); CF(48);
 	CF(49); CF(50); CF(51); CF(52); CF(53); CF(54); CF(55); CF(56);
 	CF(57); CF(58); CF(59); CF(60); CF(61); CF(62); CF(63);
+
+#ifdef NCURSES_MOUSE_VERSION
+		CC(KEY_MOUSE);
+		// Mouse button state bits
+		CCR("NCURSES_BUTTON_RELEASED",	001UL);
+		CCR("NCURSES_BUTTON_PRESSED",	 002UL);
+		CCR("NCURSES_BUTTON_CLICKED",	 004UL);
+		CCR("NCURSES_DOUBLE_CLICKED",	010UL);
+		CCR("NCURSES_TRIPLE_CLICKED",	020UL);
+		CCR("NCURSES_RESERVED_EVENT",	040UL);
+
+		// Button 1 events
+		CCR("BUTTON1_RELEASED",				NCURSES_MOUSE_MASK(1, NCURSES_BUTTON_RELEASED));
+		CCR("BUTTON1_PRESSED",				 NCURSES_MOUSE_MASK(1, NCURSES_BUTTON_PRESSED));
+		CCR("BUTTON1_CLICKED",				 NCURSES_MOUSE_MASK(1, NCURSES_BUTTON_CLICKED));
+		CCR("BUTTON1_DOUBLE_CLICKED",	NCURSES_MOUSE_MASK(1, NCURSES_DOUBLE_CLICKED));
+		CCR("BUTTON1_TRIPLE_CLICKED",	NCURSES_MOUSE_MASK(1, NCURSES_TRIPLE_CLICKED));
+
+		// Button 2 events
+		CCR("BUTTON2_RELEASED",				NCURSES_MOUSE_MASK(2, NCURSES_BUTTON_RELEASED));
+		CCR("BUTTON2_PRESSED",				 NCURSES_MOUSE_MASK(2, NCURSES_BUTTON_PRESSED));
+		CCR("BUTTON2_CLICKED",				 NCURSES_MOUSE_MASK(2, NCURSES_BUTTON_CLICKED));
+		CCR("BUTTON2_DOUBLE_CLICKED",	NCURSES_MOUSE_MASK(2, NCURSES_DOUBLE_CLICKED));
+		CCR("BUTTON2_TRIPLE_CLICKED",	NCURSES_MOUSE_MASK(2, NCURSES_TRIPLE_CLICKED));
+
+		// Button 3 events
+		CCR("BUTTON3_RELEASED",				NCURSES_MOUSE_MASK(3, NCURSES_BUTTON_RELEASED));
+		CCR("BUTTON3_PRESSED",				 NCURSES_MOUSE_MASK(3, NCURSES_BUTTON_PRESSED));
+		CCR("BUTTON3_CLICKED",				 NCURSES_MOUSE_MASK(3, NCURSES_BUTTON_CLICKED));
+		CCR("BUTTON3_DOUBLE_CLICKED",	NCURSES_MOUSE_MASK(3, NCURSES_DOUBLE_CLICKED));
+		CCR("BUTTON3_TRIPLE_CLICKED",	NCURSES_MOUSE_MASK(3, NCURSES_TRIPLE_CLICKED));
+
+		// Button 4 events
+		CCR("BUTTON4_RELEASED",				NCURSES_MOUSE_MASK(4, NCURSES_BUTTON_RELEASED));
+		CCR("BUTTON4_PRESSED",				 NCURSES_MOUSE_MASK(4, NCURSES_BUTTON_PRESSED));
+		CCR("BUTTON4_CLICKED",				 NCURSES_MOUSE_MASK(4, NCURSES_BUTTON_CLICKED));
+		CCR("BUTTON4_DOUBLE_CLICKED",	NCURSES_MOUSE_MASK(4, NCURSES_DOUBLE_CLICKED));
+		CCR("BUTTON4_TRIPLE_CLICKED",	NCURSES_MOUSE_MASK(4, NCURSES_TRIPLE_CLICKED));
+
+#if NCURSES_MOUSE_VERSION > 1
+		// Button 5 events (if available)
+		CCR("BUTTON5_RELEASED",				NCURSES_MOUSE_MASK(5, NCURSES_BUTTON_RELEASED));
+		CCR("BUTTON5_PRESSED",				 NCURSES_MOUSE_MASK(5, NCURSES_BUTTON_PRESSED));
+		CCR("BUTTON5_CLICKED",				 NCURSES_MOUSE_MASK(5, NCURSES_BUTTON_CLICKED));
+		CCR("BUTTON5_DOUBLE_CLICKED",	NCURSES_MOUSE_MASK(5, NCURSES_DOUBLE_CLICKED));
+		CCR("BUTTON5_TRIPLE_CLICKED",	NCURSES_MOUSE_MASK(5, NCURSES_TRIPLE_CLICKED));
+
+		// Modifier masks
+		CCR("BUTTON_CTRL",						 NCURSES_MOUSE_MASK(6, 0001UL));
+		CCR("BUTTON_SHIFT",						NCURSES_MOUSE_MASK(6, 0002UL));
+		CCR("BUTTON_ALT",							NCURSES_MOUSE_MASK(6, 0004UL));
+		CCR("REPORT_MOUSE_POSITION",	 NCURSES_MOUSE_MASK(6, 0010UL));
+#else
+		// Reserved events for older versions
+		CCR("BUTTON1_RESERVED_EVENT",	NCURSES_MOUSE_MASK(1, NCURSES_RESERVED_EVENT));
+		CCR("BUTTON2_RESERVED_EVENT",	NCURSES_MOUSE_MASK(2, NCURSES_RESERVED_EVENT));
+		CCR("BUTTON3_RESERVED_EVENT",	NCURSES_MOUSE_MASK(3, NCURSES_RESERVED_EVENT));
+		CCR("BUTTON4_RESERVED_EVENT",	NCURSES_MOUSE_MASK(4, NCURSES_RESERVED_EVENT));
+
+		CCR("BUTTON_CTRL",						 NCURSES_MOUSE_MASK(5, 0001UL));
+		CCR("BUTTON_SHIFT",						NCURSES_MOUSE_MASK(5, 0002UL));
+		CCR("BUTTON_ALT",							NCURSES_MOUSE_MASK(5, 0004UL));
+		CCR("REPORT_MOUSE_POSITION",	 NCURSES_MOUSE_MASK(5, 0010UL));
+#endif
+
+		// Convenience
+		CCR("ALL_MOUSE_EVENTS", (unsigned long)(REPORT_MOUSE_POSITION - 1));
+#endif
 }
 
 /*
@@ -1260,6 +1328,52 @@ Ptigetstr (lua_State *L)
 		lua_pushstring(L, res);
 	return 1;
 }
+
+#ifdef NCURSES_MOUSE_VERSION
+/***
+Enable mouse event tracking with the specified bitmask.
+@function mousemask
+@int newmask Bitmask of mouse events to enable (e.g., `0xFFFFFFFF` for all).
+@treturn int The previous mouse event mask.
+@see mousemask(3x)
+*/
+static int
+Pmousemask(lua_State *L)
+{
+	mmask_t newmask = (mmask_t)luaL_checkinteger(L, 1);
+	mmask_t oldmask = mousemask(newmask, NULL);
+	lua_pushinteger(L, (lua_Integer)oldmask);
+	return 1;
+}
+
+/***
+Retrieve the current mouse event information.
+Call this after detecting a `KEY_MOUSE` event from `getch`.
+@function getmouse
+@treturn[1] table Event table with fields `x`, `y`, `z`, and `bstate`
+@treturn[2] nil On failure
+@treturn[2] string Error message
+@see getmouse(3x)
+*/
+static int
+Pgetmouse(lua_State *L)
+{
+	MEVENT event;
+	if (getmouse(&event) == ERR) {
+		lua_pushnil(L);
+		lua_pushstring(L, "No mouse event");
+		return 2;
+	}
+
+	lua_newtable(L);
+	lua_pushinteger(L, event.x);       lua_setfield(L, -2, "x");
+	lua_pushinteger(L, event.y);       lua_setfield(L, -2, "y");
+	lua_pushinteger(L, event.z);       lua_setfield(L, -2, "z");
+	lua_pushinteger(L, event.bstate);  lua_setfield(L, -2, "bstate");
+
+	return 1;
+}
+#endif
 #endif
 
 
@@ -1321,6 +1435,10 @@ static const luaL_Reg curseslib[] =
 	LCURSES_FUNC( Punctrl		),
 	LCURSES_FUNC( Pungetch		),
 	LCURSES_FUNC( Puse_default_colors),
+#ifdef NCURSES_MOUSE_VERSION
+	LCURSES_FUNC( Pmousemask	),
+	LCURSES_FUNC( Pgetmouse		),
+#endif
 #endif
 	{NULL, NULL}
 };
@@ -1540,6 +1658,36 @@ after @{curses.initscr} has returned successfully.
 @int KEY_SUSPEND suspend key
 @int KEY_UNDO undo key
 @int KEY_UP cursor up key
+@int BUTTON1_RELEASED       mouse button 1 released event mask
+@int BUTTON1_PRESSED        mouse button 1 pressed event mask
+@int BUTTON1_CLICKED        mouse button 1 clicked event mask
+@int BUTTON1_DOUBLE_CLICKED mouse button 1 double-clicked event mask
+@int BUTTON1_TRIPLE_CLICKED mouse button 1 triple-clicked event mask
+@int BUTTON2_RELEASED       mouse button 2 released event mask
+@int BUTTON2_PRESSED        mouse button 2 pressed event mask
+@int BUTTON2_CLICKED        mouse button 2 clicked event mask
+@int BUTTON2_DOUBLE_CLICKED mouse button 2 double-clicked event mask
+@int BUTTON2_TRIPLE_CLICKED mouse button 2 triple-clicked event mask
+@int BUTTON3_RELEASED       mouse button 3 released event mask
+@int BUTTON3_PRESSED        mouse button 3 pressed event mask
+@int BUTTON3_CLICKED        mouse button 3 clicked event mask
+@int BUTTON3_DOUBLE_CLICKED mouse button 3 double-clicked event mask
+@int BUTTON3_TRIPLE_CLICKED mouse button 3 triple-clicked event mask
+@int BUTTON4_RELEASED       mouse button 4 released event mask
+@int BUTTON4_PRESSED        mouse button 4 pressed event mask
+@int BUTTON4_CLICKED        mouse button 4 clicked event mask
+@int BUTTON4_DOUBLE_CLICKED mouse button 4 double-clicked event mask
+@int BUTTON4_TRIPLE_CLICKED mouse button 4 triple-clicked event mask
+@int BUTTON5_RELEASED       mouse button 5 released event mask (ncurses > 1 only)
+@int BUTTON5_PRESSED        mouse button 5 pressed event mask (ncurses > 1 only)
+@int BUTTON5_CLICKED        mouse button 5 clicked event mask (ncurses > 1 only)
+@int BUTTON5_DOUBLE_CLICKED mouse button 5 double-clicked event mask (ncurses > 1 only)
+@int BUTTON5_TRIPLE_CLICKED mouse button 5 triple-clicked event mask (ncurses > 1 only)
+@int BUTTON_CTRL            control key modifier for mouse events
+@int BUTTON_SHIFT           shift key modifier for mouse events
+@int BUTTON_ALT             alt key modifier for mouse events
+@int REPORT_MOUSE_POSITION  report mouse position event mask
+@int ALL_MOUSE_EVENTS       all mouse events mask
 @usage
   -- Print curses constants supported on this host.
   for name, value in pairs (require "curses") do
